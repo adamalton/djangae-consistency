@@ -13,7 +13,7 @@ RECENTLY_CREATED_OBJECTS_CACHE_TIME = 60 * 5 # 5 MINUTES
 
 ########################## API ##########################
 
-def extend_queryset_with_recent_objects(queryset):
+def improve_queryset_consistency(queryset):
     """ Makes a queryset eventual-consistency-proof by:
         1. Explicitly including PKs of recently-created objects (if they match the query).
         2. Re-fetching each object by PK to ensure that we get the latest version and exclude

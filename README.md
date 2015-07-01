@@ -15,14 +15,14 @@ import consistency # ensure that the signals get registered
 ```python
 # views.py
 
-from consistency import extend_queryset_with_recent_objects, get_recently_created_objects
+from consistency import improve_queryset_consistency, get_recently_created_objects
 
 # Example 1 - extending a queryset to include recently-created objects which also match it.
 # Note that this causes your queryset to be evaluated.
 
 def my_view(request):
     objects = MyModel.objects.filter(is_yellow=True)
-    objects = extend_queryset_with_recent_objects(objects)
+    objects = improve_queryset_consistency(objects)
     return render(request, "my_template.html". {"objects": objects})
 
 
@@ -44,5 +44,5 @@ recently-created objects are only stored in memcache, which could be purged at a
   included in the cache of recent objects as well.  (Objects which previously didn't match the query
   may now match it but may not be returned by the normal Datastore query due to eventual consistency.)
 * Add the option to only cache objects for specific models.
-* In `extend_queryset_with_recent_objects` check that the queryset has a limit, and/or check that
+* In `improve_queryset_consistency` check that the queryset has a limit, and/or check that
   the total number of PKs is <= 1000 (the maximum for a Datastore Get).
