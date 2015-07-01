@@ -1,7 +1,6 @@
 """ A module which helps prevent eventual consistency issues on the Datastore. """
 
 import datetime
-import itertools
 from django.core.cache import cache
 from django.db import models
 from django.dispatch import receiver
@@ -20,14 +19,13 @@ def extend_queryset_with_recent_objects(queryset):
         2. Re-fetching each object by PK to ensure that we get the latest version and exclude
            objects which no longer match the query.
     """
-    new = queryset.model._default_manager.all()
     # By using pk__in we cause the objects to be re-fetched with datastore.Get so we get the
     # up-to-date version of every object
     pks = list(queryset.values_list('pk', flat=True)) # this may exclude recently-created objects
-    recent_pks = [pk for pk in get_recently_created_object_pks_for_model(queryset.model) if pk not in pks]
-    refreshed_objects = new.filter(pk__in=pks)
-    new_objects = queryset.filter(pk__in=recent_pks)
-    return itertools.chain(refreshed_objects, new_objects)
+    recent_pks = get_recently_created_object_pks_for_model(queryset.model)
+    combined_pks = list(set(pks + recent_pks))
+    # we keep the original filtering as well so that objects which don't match the query are excluded
+    return queryset.filter(pk__in=combined_pks)
 
 
 def get_recently_created_objects(queryset):
