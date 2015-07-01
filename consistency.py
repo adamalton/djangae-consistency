@@ -17,7 +17,8 @@ RECENTLY_CREATED_OBJECTS_CACHE_TIME = 60 * 5 # 5 MINUTES
 def extend_queryset_with_recent_objects(queryset):
     """ Makes a queryset eventual-consistency-proof by:
         1. Explicitly including PKs of recently-created objects (if they match the query).
-        2. Re-fetching each object by PK to ensure that we get the latest version.
+        2. Re-fetching each object by PK to ensure that we get the latest version and exclude
+           objects which no longer match the query.
     """
     new = queryset.model._default_manager.all()
     # By using pk__in we cause the objects to be re-fetched with datastore.Get so we get the
@@ -28,6 +29,13 @@ def extend_queryset_with_recent_objects(queryset):
     new_objects = queryset.filter(pk__in=recent_pks)
     return itertools.chain(refreshed_objects, new_objects)
 
+
+def get_recently_created_objects(queryset):
+    """ Get and return a queryset of recently-created objects which match the given queryset.
+        You can append/include/merge this with the results of the original queryset as you wish.
+        Note that this may include objects which are also returned by your original queryset.
+    """
+    return queryset.filter(pk__in=get_recently_created_object_pks_for_model(queryset.model))
 
 ######################## SIGNALS ########################
 
