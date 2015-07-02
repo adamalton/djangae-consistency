@@ -59,9 +59,9 @@ CONSISTENCY_CONFIG = {
     "defaults": {
         "cache_on_creation": True,
         "cache_on_modification": False,
-        "cache_time": 60, # seconds
+        "cache_time": 60, # Seconds
         "caches": ["django"], # Where to store the cache.
-        "only_cache_matching": [], # optional filtering (see below)
+        "only_cache_matching": [], # Optional filtering (see below)
     },
 
     # The settings can be overridden for each individual model
@@ -82,6 +82,7 @@ CONSISTENCY_CONFIG = {
         "app_name.UnimportantModel": {
             "cache_on_creation": False,
             "cache_on_modification": False,
+            # Any settings which you don't override inheit from "defaults".
         },
     },
 }
