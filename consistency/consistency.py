@@ -67,14 +67,14 @@ def get_recent_objects(queryset):
 ######################## SIGNALS ########################
 
 
-@receiver(models.signals.post_save)
+@receiver(models.signals.post_save, dispatch_uid="consistency_post_save")
 def handle_post_save(sender, instance, created, **kwargs):
     config = get_config(sender)
     if should_cache(instance, created, config):
         add_object_pk_to_caches(instance, config)
 
 
-@receiver(models.signals.post_delete)
+@receiver(models.signals.post_delete, dispatch_uid="consistency_post_delete")
 def handle_post_delete(sender, instance, **kwargs):
     config = get_config(sender)
     if might_be_cached(sender, config):
