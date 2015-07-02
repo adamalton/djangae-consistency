@@ -38,7 +38,7 @@ class DjangoCache(object):
         objects = cache.get(cache_key) or {}
         # take the opportunity to prune our cache of any objects which were created a while
         # ago and should therefore now be being returned by the Datastore
-        updated_objects = strip_old_objects(objects)
+        updated_objects = strip_old_objects(objects, config["cache_time"])
         try:
             del updated_objects[obj.pk]
         except KeyError:
