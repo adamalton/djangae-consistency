@@ -77,6 +77,17 @@ CONSISTENCY_CONFIG = {
     },
 }
 
+
+## Notes
+
+* Even if you set both `cache_on_creation` and `cache_on_modification` to `False`, you can still use
+`improve_queryset_consistency` to prevent stale objects from being returned by your query.
+* Using the "session" cache may be slightly faster for querying (as the session object has probably
+  been loaded anyway, so it avoids another cache lookup), but it's unlikely to be faster when
+  creating/modifying an object, because writing to the session requires a Database write, which is
+  probably slower than a cache write.  Unless you're altering the session object anyway, in which
+  case the session cache may be advantageous.
+
 # TODO
 
 * Make an option to include whether to also cache recently *modified* objects so that they can be
