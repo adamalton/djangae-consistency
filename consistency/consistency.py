@@ -7,6 +7,7 @@ import logging
 from django.conf import settings
 from django.db import models
 from django.dispatch import receiver
+from google.appengine.datastore.datastore_rpc import BaseConnection
 
 # CONSISTENCY
 from .caches import get_caches
@@ -30,13 +31,30 @@ def improve_queryset_consistency(queryset):
         2. Re-fetching each object by PK to ensure that we get the latest version and exclude
            objects which no longer match the query.
     """
-    # By using pk__in we cause the objects to be re-fetched with datastore.Get so we get the
-    # up-to-date version of every object
-    pks = list(queryset.values_list('pk', flat=True)) # this may exclude recently-created objects
+    original = queryset.all()
     recent_pks = get_recent_object_pks_for_model(queryset.model)
+
+    max_existing_pks = BaseConnection.MAX_GET_KEYS - len(recent_pks)
+    high_mark = queryset.query.high_mark
+    low_mark = queryset.query.low_mark or 0
+    if high_mark is None or (high_mark - low_mark > max_existing_pks):
+        # Having no limit set or a limit which is too high can cause 2 issues:
+        # 1. Potential slowness because we fetch PKs for the whole result.
+        # 2. Potential death because we might end up with more than 1000 PKs.
+        # We avoid 2 and keep 1 to a minimum by imposing a limit to ensure a total result of <= 1000.
+        # Note that this is imperfect because not all of the objects from recent_pks will
+        # necessarily match the query, so we might limit more than necessary.
+        imposed_limit = max_existing_pks + (queryset.query.low_mark or 0)
+        logging.info("Limiting queryset for %s to %d", queryset.model, imposed_limit)
+        queryset = queryset.all()[:imposed_limit]
+
+    pks = list(queryset.all().values_list('pk', flat=True)) # this may include recently-created objects
     combined_pks = list(set(pks + recent_pks))
-    # we keep the original filtering as well so that objects which don't match the query are excluded
-    return queryset.filter(pk__in=combined_pks)
+    # By using pk__in we cause the objects to be re-fetched with datastore.Get so we get the
+    # up-to-date version of every object.
+    # We keep the original filtering as well so that objects which don't match the query are excluded.
+    # Keeping the original queryset also retains the ordering.
+    return original.filter(pk__in=combined_pks)
 
 
 def get_recent_objects(queryset):

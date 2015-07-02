@@ -81,12 +81,22 @@ CONSISTENCY_CONFIG = {
 ## Notes
 
 * Even if you set both `cache_on_creation` and `cache_on_modification` to `False`, you can still use
-`improve_queryset_consistency` to prevent stale objects from being returned by your query.
+  `improve_queryset_consistency` to prevent stale objects from being returned by your query.
+* The way that `improve_queryset_consistency` works means that it converts your query into a
+  `pk__in` query.  This has 2 side effects:
+    - It causes the initial query to be executed.  It does this with `values_list('pk')` (which
+      becomes a Datastore keys-only query) so is fast, but you should be aware that it hits the DB.
+    - It introduces a limit of 1000 results, so if your queryset is not already limited then a
+      limit will be imposed, and if your queryset already has a limit then it may be reduced. This
+      is to ensure a total result of <= 1000 objects.  This is imperfect though, and may result in
+      slightly fewer than 1000 results because recent objects in the cache will reduce the limit
+      even if they don't match the query. (This could potentially be fixed.)
 * Using the "session" cache may be slightly faster for querying (as the session object has probably
   been loaded anyway, so it avoids another cache lookup), but it's unlikely to be faster when
   creating/modifying an object, because writing to the session requires a Database write, which is
   probably slower than a cache write.  Unless you're altering the session object anyway, in which
   case the session cache may be advantageous.
+
 
 # TODO
 
