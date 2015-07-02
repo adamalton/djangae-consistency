@@ -4,35 +4,40 @@ A Django app which helps to mitigate against eventual consistency issues with th
 Works only with [Djangae](https://github.com/potatolondon/djangae).
 
 
+## In A Nutshell
+
+It caches recently created and/or modified objects so that it knows about them even if they're not
+yet being returned by the Datastore.  It then provides a function `improve_queryset_consistency`
+which you can use on a queryset so that it:
+
+* Uses the cache to include recently-created/-modified objects which match the query but which are
+  not yet being returned by the Datastore. (This is not effective if the cache gets purged).
+* Does not return any recently deleted objects which are still being returned by the Datastore.
+  (This is not cache-dependent.)
+
+
 ## Usage
 
-```python
-# models.py
-
-import consistency # ensure that the signals get registered
-```
+Add `'consistency'` to `settings.INSTALLED_APPS` and then use as follows.  (You may also need to
+import `consistency.models` to get the signals to register.)
 
 ```python
-# views.py
 
 from consistency import improve_queryset_consistency, get_recent_objects
 
-# Example 1 - extending a queryset to include recently-created objects which also match it.
-# Note that this causes your queryset to be evaluated.
+# Example 1 - `improve_queryset_consistency`
 
-def my_view(request):
-    objects = MyModel.objects.filter(is_yellow=True)
-    objects = improve_queryset_consistency(objects)
-    return render(request, "my_template.html". {"objects": objects})
+queryset = MyModel.objects.filter(is_yellow=True)
+more_consistent_queryset = improve_queryset_consistency(queryset)
+# Use as normal
 
 
-# Example 2 - getting a separate queryset of the recently-created objects which match it.
+# Example 2 - `get_recent_objects`
 
+queryset = MyModel.objects.filter(is_yellow=True)
+objects_possibly_missed = get_recent_objects(queryset)
+# Use both together to build your full set of results
 
-def my_view(request):
-    objects = MyModel.objects.filter(is_yellow=True)
-    new_objects = get_recent_objects(objects)
-    return render(request, "my_template.html". {"objects": objects, "new_objects": new_objects})
 ```
 
 Note that in both cases the recently-created objects are not guaranteed to be returned.  The
@@ -43,7 +48,7 @@ recently-created objects are only stored in memcache, which could be purged at a
 
 By default the app will cache recently-created objects for all models.  But you can change this
 behaviour so that it only caches particular models, only caches objects that match particular
-criteria, and/or caches objects that were recently *modified* as well as recently *created* objects.
+criteria, and/or caches objects that were recently *modified* as well as recently *created*.
 
 ```python
 CONSISTENCY_CONFIG = {
@@ -64,7 +69,8 @@ CONSISTENCY_CONFIG = {
             "caches": ["session", "django"],
             "cache_time": 20,
             "only_cache_matching": [
-                # A list of checks, where each check is a dict of filter kwargs or a function.
+                # A list of checks, where each check is a dict of
+                # filter kwargs or a function.
                 # If an object matches *any* of these then it is cached.
                 {"name": "Ted", "archived": False},
                 lambda obj: obj.method(),
@@ -76,6 +82,7 @@ CONSISTENCY_CONFIG = {
         },
     },
 }
+```
 
 
 ## Notes
@@ -91,18 +98,10 @@ CONSISTENCY_CONFIG = {
       is to ensure a total result of <= 1000 objects.  This is imperfect though, and may result in
       slightly fewer than 1000 results because recent objects in the cache will reduce the limit
       even if they don't match the query. (This could potentially be fixed.)
+* To avoid the side effects of `improve_queryset_consistency` you may wish to use
+  `get_recent_objects` instead, giving you slightly more control over what happens.
 * Using the "session" cache may be slightly faster for querying (as the session object has probably
   been loaded anyway, so it avoids another cache lookup), but it's unlikely to be faster when
   creating/modifying an object, because writing to the session requires a Database write, which is
   probably slower than a cache write.  Unless you're altering the session object anyway, in which
   case the session cache may be advantageous.
-
-
-# TODO
-
-* Make an option to include whether to also cache recently *modified* objects so that they can be
-  included in the cache of recent objects as well.  (Objects which previously didn't match the query
-  may now match it but may not be returned by the normal Datastore query due to eventual consistency.)
-* Add the option to only cache objects for specific models.
-* In `improve_queryset_consistency` check that the queryset has a limit, and/or check that
-  the total number of PKs is <= 1000 (the maximum for a Datastore Get).
