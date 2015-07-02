@@ -121,7 +121,7 @@ def get_recent_object_pks_for_model(model_class):
     cache_key = get_model_cache_key(model_class)
     pks = set()
     for cache in get_caches(config["caches"]):
-        pks.update(cache.get_pks(model_class, cache_key))
+        pks.update(cache.get_pks(model_class, config, cache_key))
     return list(pks)
 
 

@@ -47,9 +47,13 @@ class DjangoCache(object):
             # only update the cache if it's changed
             cache.set(cache_key, objects) # TODO use check and set to make this transactional
 
-    def get_pks(self, model_class, cache_key):
-        objects = cache.get(cache_key) or {}
-        return objects.keys()
+    def get_pks(self, model_class, config, cache_key):
+        result = cache.get(cache_key) or {}
+        # We strip out any PKs which are older than the cache_time, but for speed
+        # we don't bother updating the cache, we only do that when saving an object
+        if result:
+            result = strip_old_objects(result, config["cache_time"])
+        return result.keys()
 
 
 class SessionCache(object):
@@ -83,11 +87,15 @@ class SessionCache(object):
                     pass
                 caches_dict[cache_key] = model_cache
 
-    def get_pks(self, model_class, cache_key):
+    def get_pks(self, model_class, config, cache_key):
         request = get_request()
         if request:
             caches_dict = request.session.setdefault(self.CONTAINER_KEY, {})
             model_cache = caches_dict.get(cache_key, {})
+            # We strip out any PKs which are older than the cache_time, but for speed
+            # we don't bother updating the cache, we only do that when saving an object
+            if model_cache:
+                model_cache = strip_old_objects(model_cache, config["cache_time"])
             return model_cache.keys()
         return []
 
