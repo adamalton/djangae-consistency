@@ -53,12 +53,15 @@ criteria, and/or caches objects that were recently *modified* as well as recentl
 ```python
 CONSISTENCY_CONFIG = {
 
-    # These defaults apply to every model, unless otherwise overriden
+    # These defaults apply to every model, unless otherwise overriden.
+    # The values shown here are the default defaults (i.e. what you get if
+    # you don't set CONSISTENCY_CONFIG at all).
     "defaults": {
         "cache_on_creation": True,
         "cache_on_modification": False,
         "cache_time": 60, # seconds
-        "caches": ["django", "session"],
+        "caches": ["django"], # Where to store the cache.
+        "only_cache_matching": [], # optional filtering (see below)
     },
 
     # The settings can be overridden for each individual model
@@ -69,9 +72,9 @@ CONSISTENCY_CONFIG = {
             "caches": ["session", "django"],
             "cache_time": 20,
             "only_cache_matching": [
-                # A list of checks, where each check is a dict of
-                # filter kwargs or a function.
-                # If an object matches *any* of these then it is cached.
+                # A list of checks, where each check is a dict of filter
+                # kwargs or a function. If an object matches *any* of
+                # these then it is cached. No filters means cache everything.
                 {"name": "Ted", "archived": False},
                 lambda obj: obj.method(),
             ]
@@ -100,8 +103,10 @@ CONSISTENCY_CONFIG = {
       even if they don't match the query. (This could potentially be fixed.)
 * To avoid the side effects of `improve_queryset_consistency` you may wish to use
   `get_recent_objects` instead, giving you slightly more control over what happens.
-* Using the "session" cache may be slightly faster for querying (as the session object has probably
-  been loaded anyway, so it avoids another cache lookup), but it's unlikely to be faster when
-  creating/modifying an object, because writing to the session requires a Database write, which is
-  probably slower than a cache write.  Unless you're altering the session object anyway, in which
-  case the session cache may be advantageous.
+* As you can see in the config section, there are 2 places which the new objects can be cached: in
+  Django's normal cache (`django.core.cache`) or in the current user's session.
+    - Using the "session" cache may be slightly faster for querying (as the session object has probably
+      been loaded anyway, so it avoids another cache lookup), but it's unlikely to be faster when
+      creating/modifying an object, because writing to the session requires a Database write, which is
+      probably slower than a cache write.  Unless you're altering the session object anyway, in which
+      case the session cache may be advantageous.
