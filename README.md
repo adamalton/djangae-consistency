@@ -1,5 +1,8 @@
 # Djangae Consistency
 
+**Note: this project has now been merged into [djangae](https://github.com/potatolondon/djangae) as `djangae.contrib.consistency`.  Pull requests should be submitted there.**
+
+
 A Django app which helps to mitigate against eventual consistency issues with the App Engine Datastore.
 Works only with [Djangae](https://github.com/potatolondon/djangae).
 
